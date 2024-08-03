@@ -8,13 +8,14 @@ public function main(int port, string ip) returns error? {
     io:println(ip);
     string url = string `ws://${ip}:${port}/`;
     websocket:Client chatClient = check new (url);
+    string? userInput= io:readln("What you want to say to the server?");
 
     // Write a message to the server using `writeMessage`.
     // This function accepts `anydata`. If the given type is a `byte[]`, the message will be sent as
     // binary frames and the rest of the data types will be sent as text frames.
     while true {
         
-    check chatClient->writeMessage("Hello John!");
+    check chatClient->writeMessage(userInput);
 
     // Read a message sent from the server using `readMessage`.
     // The contextually-expected data type is inferred from the LHS variable type. The received data
