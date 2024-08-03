@@ -19,7 +19,7 @@ service class EchoService {
     remote function onBytes(tcp:Caller caller, readonly & byte[] data) returns tcp:Error? {
         io:println("Echo: ", string:fromBytes(data));
         // Echoes back the data to the client from which the data is received.
-        check caller->writeBytes(data);
+        check caller->writeBytes("this is response from server".toBytes());
     }
 
     // This remote method is invoked in an erroneous situation,
@@ -29,7 +29,7 @@ service class EchoService {
     }
 
     // This remote method is invoked when the connection is closed.
-    // remote function onClose() {
-    //     io:println("Client left");
-    // }
+    remote function onClose() {
+        io:println("Client left");
+    }
 }
