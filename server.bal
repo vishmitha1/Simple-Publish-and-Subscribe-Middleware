@@ -1,35 +1,22 @@
 import ballerina/io;
-import ballerina/log;
-import ballerina/tcp;
+import ballerina/websocket;
 
-// Bind the service to the port. 
-service on new tcp:Listener(9090) {
+service / on new websocket:Listener(9090) {
 
-    // This remote method is invoked when the new client connects to the server.
-    remote function onConnect(tcp:Caller caller) returns tcp:ConnectionService {
-        io:println("Client connected to echo server: ", caller.remotePort);
-        return new EchoService();
+    resource function get .() returns websocket:Service {
+        // Accept the WebSocket upgrade by returning a `websocket:Service`.
+        return new ChatService();
     }
 }
 
-service class EchoService {
-    *tcp:ConnectionService;
+service class ChatService {
+    *websocket:Service;
 
-    // This remote method is invoked once the content is received from the client.
-    remote function onBytes(tcp:Caller caller, readonly & byte[] data) returns tcp:Error? {
-        io:println("Echo: ", string:fromBytes(data));
-        // Echoes back the data to the client from which the data is received.
-        check caller->writeBytes("this is response from server".toBytes());
-    }
-
-    // This remote method is invoked in an erroneous situation,
-    // which occurs during the execution of the `onConnect` or `onBytes` method.
-    remote function onError(tcp:Error err) {
-        log:printError("An error occurred", 'error = err);
-    }
-
-    // This remote method is invoked when the connection is closed.
-    remote function onClose() {
-        io:println("Client left");
+    // This `remote function` is triggered when a new message is received
+    // from a client. It accepts `anydata` as the function argument. The received data 
+    // will be converted to the data type stated as the function argument.
+    remote function onMessage(websocket:Caller caller, string chatMessage) returns error? {
+        io:println(chatMessage);
+        check caller->writeMessage("Hello!, How are you?");
     }
 }

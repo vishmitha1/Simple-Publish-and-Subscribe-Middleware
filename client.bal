@@ -1,21 +1,26 @@
 import ballerina/io;
-import ballerina/tcp;
+import ballerina/websocket;
 import ballerina/lang.runtime;
 
-public function main() returns error? {
-    // Create a new TCP client by providing the `remoteHost` and `remotePort`.
-    tcp:Client socketClient = check new ("localhost", 9090);
+public function main(int port, string ip) returns error? {
+    // Create a new WebSocket client.
+    io:println(port);
+    io:println(ip);
+    string url = string `ws://${ip}:${port}/`;
+    websocket:Client chatClient = check new (url);
 
-    // Loop to keep the client running
+    // Write a message to the server using `writeMessage`.
+    // This function accepts `anydata`. If the given type is a `byte[]`, the message will be sent as
+    // binary frames and the rest of the data types will be sent as text frames.
     while true {
-        // Send the desired content to the server.
-        check socketClient->writeBytes("Hello Ballerina from client".toBytes());
         
-        // Read the response from the server.
-        readonly & byte[] receivedData = check socketClient->readBytes();
-        io:println("Received: ", string:fromBytes(receivedData));
+    check chatClient->writeMessage("Hello John!");
 
-        // Wait for some time before sending the next message
-        runtime:sleep(5); // Sleep for 5 seconds
+    // Read a message sent from the server using `readMessage`.
+    // The contextually-expected data type is inferred from the LHS variable type. The received data
+    // will be converted to that particular data type.
+    string message = check chatClient->readMessage();
+    io:println(message);
+    runtime:sleep(3); //set the sleep time in 3 seconds
     }
 }
