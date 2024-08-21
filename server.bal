@@ -16,6 +16,12 @@ service class ChatService {
     // from a client. It accepts `anydata` as the function argument. The received data 
     // will be converted to the data type stated as the function argument.
     remote function onMessage(websocket:Caller caller, string chatMessage) returns error? {
+        io:println(caller.getConnectionId());
+        if(chatMessage=="terminate"){
+            check caller->writeMessage("Goodbye!");
+            check caller->close();
+            return;
+        }
         io:println(chatMessage);
         check caller->writeMessage("Hello!, How are you?");
     }
