@@ -1,11 +1,9 @@
 import ballerina/io;
 import ballerina/regex;
-// import ballerina/lang.value;
-// import ballerina/lang.value;
 import ballerina/websocket;
 
 listener websocket:Listener PubSubListner = new websocket:Listener(9090);
-// isolated map<websocket:Caller> subscriberList={};
+
 isolated websocket:Caller[] subscriberList = [];
 isolated websocket:Caller[] publisherList = [];
 
@@ -40,12 +38,12 @@ service class PubSubService {
         self.userType = userType;
         self.multipleTopics = regex:split(topic, ",");
 
-        if (self.multipleTopics.length()==1) {
+        if (self.multipleTopics.length() == 1) {
 
             self.topic = self.multipleTopics[0];
 
         }
-        
+
     }
 
     public isolated function onOpen(websocket:Caller caller) returns error? {
@@ -61,16 +59,14 @@ service class PubSubService {
 
                 io:println("subs", subscriberList);
             }
+            if (self.multipleTopics.length() > 1) {
+                caller.setAttribute("isMultipleTopics", true);
+                caller.setAttribute("multipleTopics", self.multipleTopics);
+
+            }
 
             caller.setAttribute("topic", self.topic);
-            // if (self.multipleTopics.length() > 0) {
-            //     caller.setAttribute("isMultipleTopics",true);
-            //     caller.setAttribute("numberOfTopics",self.multipleTopics.length());
-            //     foreach int i in 0...self.multipleTopics.length() {
-            //         string topicKey=string `topic${i}`;
-            //         caller.setAttribute(topicKey,self.multipleTopics[i]);
-            //     }
-            // }
+
         }
 
         else if (self.userType === "PUBLISHER") {
@@ -78,6 +74,13 @@ service class PubSubService {
                 publisherList.push(caller);
                 io:println("pub", publisherList);
             }
+            if (self.multipleTopics.length() > 1) {
+                caller.setAttribute("isMultipleTopics", true);
+                caller.setAttribute("multipleTopics", self.multipleTopics);
+
+            }
+
+            caller.setAttribute("topic", self.topic);
         }
 
     }
@@ -87,9 +90,10 @@ service class PubSubService {
     // will be converted to the data type stated as the function argument.
     remote function onMessage(websocket:Caller caller, string chatMessage) returns error? {
         io:println(chatMessage);
+        
         if (self.userType === "PUBLISHER") {
             check caller->writeMessage("Hello!, How are you?");
-            self.broadCast(chatMessage);
+            return self.broadCast(chatMessage);
         }
 
     }
@@ -112,32 +116,70 @@ service class PubSubService {
         }
     }
 
-    isolated function broadCast(string msg) {
-  
-   
+    isolated function broadCast(string msg) returns error? {
 
         lock {
 
             foreach websocket:Caller item in subscriberList {
 
-                if (self.multipleTopics.length() == 1) {  //check publisher single topic
+                if (self.multipleTopics.length() == 1) { //check publisher single topic
 
+                    if (item.getAttribute("isMultipleTopics") == true) { //single topic pub -> multiple topic sub
+                        string[] subscriberTopics = check item.getAttribute("multipleTopics").ensureType();
 
-                    if (item.getAttribute("topic") === self.multipleTopics[0]) {
-                        websocket:Error? writeTextMessage = item->writeMessage(msg);
-                        if writeTextMessage is error {
-                            io:println("Error in Bradcasting:", writeTextMessage);
+                        foreach string topic in subscriberTopics {
+                            if (self.multipleTopics[0] === topic) {
+                                websocket:Error? writeTextMessage = item->writeMessage(msg);
+                                if writeTextMessage is error {
+                                    io:println("Error in Bradcasting:", writeTextMessage);
+                                }
+                            }
+                        }
+                    }
+
+                    else { //single topic pub -> single topic sub
+                        if (item.getAttribute("topic") === self.multipleTopics[0]) {
+                            websocket:Error? writeTextMessage = item->writeMessage(msg);
+                            if writeTextMessage is error {
+                                io:println("Error in Bradcasting:", writeTextMessage);
+                            }
                         }
                     }
 
                 }
-                
+
+                else if (self.multipleTopics.length() > 1) { //check publishers multiple topics
+
+                    if (item.getAttribute("isMultipleTopics") == true) { //multi topic pub -> multi topic pub
+                        string[] subscriberTopics = check item.getAttribute("multipleTopics").ensureType();
+
+                        foreach string subTopic in subscriberTopics {
+                            boolean isFound = self.multipleTopics.some(n => n === subTopic);
+                            if (isFound) {
+                                websocket:Error? writeTextMessage = item->writeMessage(msg);
+                                if writeTextMessage is error {
+                                    io:println("Error in Bradcasting:", writeTextMessage);
+                                }
+                            }
+                        }
+                    }
+
+                    else { //multi topic pub -> single topic sub
+                        string subTopic = check item.getAttribute("topic").ensureType();
+                        int? index = self.multipleTopics.indexOf(subTopic);
+                        if index is int {
+                            websocket:Error? writeTextMessage = item->writeMessage(msg);
+                            if writeTextMessage is error {
+                                io:println("Error in Bradcasting:", writeTextMessage);
+                            }
+                        }
+
+                    }
+                }
 
             }
         }
     }
-
-   
 
 }
 
