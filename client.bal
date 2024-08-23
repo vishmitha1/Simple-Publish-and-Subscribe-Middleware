@@ -2,12 +2,12 @@ import ballerina/io;
 import ballerina/lang.runtime;
 import ballerina/websocket;
 
-public function main(int port, string ip, string userType) returns error? {
+public function main(int port, string ip, string userType,string topic) returns error? {
     // Create a new WebSocket client.
     io:println(port);
     io:println(ip);
     string clientType = userType.toUpperAscii();
-    string url = string `ws://${ip}:${port}/${clientType}`; 
+    string url = string `ws://${ip}:${port}/${clientType}/${topic}`; 
     websocket:Client chatClient = check new (url);
     // check chatClient->writeTextMessage(clientType);
 
